@@ -82,16 +82,17 @@ def get_editor():
     return _editor
 
 
-# The model can't measure inches; pair the number with a strong directional cue.
+# The model can't measure inches; pair the number with a strong directional cue
+# (tyre-sidewall language moves the needle more than diameter words alone).
 _SIZE_CUE = {
-    17: "a modest, near-standard diameter",
-    18: "a slightly upsized diameter",
-    19: "a moderately upsized diameter",
-    20: "a noticeably larger diameter",
-    21: "a large aftermarket diameter",
-    22: "a very large aftermarket diameter",
-    23: "a dramatically oversized show-car diameter",
-    24: "an extreme, maximum show-car diameter",
+    17: "a compact diameter with a tall, chunky tyre sidewall",
+    18: "a standard diameter with a normal tyre sidewall",
+    19: "a slightly enlarged diameter with a slimmer tyre sidewall",
+    20: "a clearly enlarged diameter with a low-profile tyre",
+    21: "a much larger diameter with a very low-profile tyre",
+    22: "a very large show-style diameter with rubber-band-thin tyres",
+    23: "an extremely oversized diameter with paper-thin tyre sidewalls",
+    24: "the most extreme oversized fitment possible, with virtually no tyre sidewall",
 }
 
 

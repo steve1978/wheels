@@ -120,6 +120,10 @@ export default function Configurator() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("photo");
   const fileRef = useRef<HTMLInputElement>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Rendered-result cache so the size slider can scrub instantly between
+  // sizes that have already been rendered for the current settings.
+  const renderCache = useRef<Map<string, string>>(new Map());
+  const [sweepText, setSweepText] = useState<string | null>(null);
 
   // Engine status + libraries. Re-fetch wheels when the engine comes up so a
   // freshly scraped catalog appears.
@@ -168,9 +172,15 @@ export default function Configurator() {
     seed: number;
   };
 
+  const cacheKey = useCallback(
+    (p: EditParams) =>
+      JSON.stringify([source, p.bodyColor, p.bodyFinish, p.wheelId, p.wheelColor, p.wheelSize, p.seed]),
+    [source]
+  );
+
   const runEdit = useCallback(
-    async (p: EditParams) => {
-      if (!source) return;
+    async (p: EditParams): Promise<string | null> => {
+      if (!source) return null;
       setBusy(true);
       setError(null);
       setElapsed(0);
@@ -224,6 +234,7 @@ export default function Configurator() {
         );
         setResult(res.image);
         setResultSource(source);
+        renderCache.current.set(cacheKey(p), res.image);
         const label = [
           p.bodyColor && `body ${p.bodyColor}`,
           p.bodyFinish && `${p.bodyFinish} finish`,
@@ -235,6 +246,7 @@ export default function Configurator() {
           .join(", ");
         setHistory((h) => [{ img: res.image, src: source, label }, ...h].slice(0, 12));
         fetchWheels().then(setWheels).catch(() => {});
+        return res.image;
       } catch (e) {
         if (e instanceof ApiError && e.status === 429) {
           setError("The render queue is full right now — try again in a minute.");
@@ -250,8 +262,9 @@ export default function Configurator() {
         tickRef.current = null;
         setBusy(false);
       }
+      return null;
     },
-    [source, status, isMobile]
+    [source, status, isMobile, cacheKey]
   );
 
   useEffect(
@@ -262,6 +275,37 @@ export default function Configurator() {
   );
 
   const onApply = () => runEdit({ bodyColor, bodyFinish, wheelId, wheelColor, wheelSize, seed: 0 });
+
+  /** Size slider released: serve instantly from cache if this size was already
+   * rendered with the current settings; otherwise render it once. */
+  const onSizeCommit = (s: number | null) => {
+    setWheelSize(s);
+    if (!source || busy || status !== "ready") return;
+    const p: EditParams = { bodyColor, bodyFinish, wheelId, wheelColor, wheelSize: s, seed: 0 };
+    const hit = renderCache.current.get(cacheKey(p));
+    if (hit) {
+      setResult(hit);
+      setResultSource(source);
+    } else if (s !== null) {
+      runEdit(p);
+    }
+  };
+
+  /** Pre-render every size for the current settings so the slider scrubs in
+   * real time afterwards. Sequential — one render at a time on the GPU. */
+  const onSweep = async () => {
+    if (!source || busy || status !== "ready") return;
+    const sizes = [17, 18, 19, 20, 21, 22, 23, 24];
+    for (let i = 0; i < sizes.length; i++) {
+      const p: EditParams = { bodyColor, bodyFinish, wheelId, wheelColor, wheelSize: sizes[i], seed: 0 };
+      if (renderCache.current.has(cacheKey(p))) continue;
+      setSweepText(`${i + 1}/8`);
+      setWheelSize(sizes[i]);
+      const img = await runEdit(p);
+      if (!img) break; // stop the sweep on error
+    }
+    setSweepText(null);
+  };
   const onReroll = () =>
     runEdit({
       bodyColor,
@@ -556,17 +600,33 @@ export default function Configurator() {
                 />
               </div>
               <div className="space-y-2">
-                <p className="text-xs uppercase tracking-wide text-neutral-500">Wheel size</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <FinishPill active={wheelSize === null} onClick={() => setWheelSize(null)} label="Keep" />
-                  {[17, 18, 19, 20, 21, 22, 23, 24].map((s) => (
-                    <FinishPill
-                      key={s}
-                      active={wheelSize === s}
-                      onClick={() => setWheelSize(s)}
-                      label={`${s}"`}
-                    />
-                  ))}
+                <p className="text-xs uppercase tracking-wide text-neutral-500">
+                  Wheel size {wheelSize ? `— ${wheelSize}"` : "— standard"}
+                </p>
+                <input
+                  type="range"
+                  min={17}
+                  max={24}
+                  step={1}
+                  value={wheelSize ?? 20}
+                  onChange={(e) => setWheelSize(Number(e.target.value))}
+                  onPointerUp={(e) => onSizeCommit(Number((e.target as HTMLInputElement).value))}
+                  className="w-full accent-indigo-400"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onSizeCommit(null)}
+                    className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300"
+                  >
+                    Reset size
+                  </button>
+                  <button
+                    onClick={onSweep}
+                    disabled={busy}
+                    className="rounded border border-dashed border-neutral-600 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
+                  >
+                    {sweepText ? `Rendering ${sweepText}` : "⚡ Render all sizes"}
+                  </button>
                 </div>
               </div>
             </div>
@@ -639,7 +699,7 @@ export default function Configurator() {
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-neutral-950/75 backdrop-blur-sm">
                 <div className="w-72">
                   <div className="mb-2 flex justify-between text-sm text-neutral-300">
-                    <span>{progressText}</span>
+                    <span>{sweepText ? `Size sweep ${sweepText} — ${progressText}` : progressText}</span>
                     <span className="tabular-nums">{elapsed}s</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-neutral-800">
@@ -654,6 +714,50 @@ export default function Configurator() {
                     ? "Product-wheel swaps take ~30–60 seconds"
                     : "Typically ~15 seconds on the local GPU"}
                 </p>
+              </div>
+            )}
+
+            {/* Wheel-size slider — sizes render once, then scrub instantly */}
+            {source && (
+              <div className="absolute right-3 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-950/85 px-2 py-3 backdrop-blur">
+                <span className="text-xs font-semibold tabular-nums text-white">
+                  {wheelSize ? `${wheelSize}"` : "std"}
+                </span>
+                <input
+                  type="range"
+                  min={17}
+                  max={24}
+                  step={1}
+                  value={wheelSize ?? 20}
+                  onChange={(e) => setWheelSize(Number(e.target.value))}
+                  onPointerUp={(e) => onSizeCommit(Number((e.target as HTMLInputElement).value))}
+                  onKeyUp={(e) => {
+                    if (e.key === "Enter") onSizeCommit(Number((e.target as HTMLInputElement).value));
+                  }}
+                  className="accent-indigo-400"
+                  style={{ writingMode: "vertical-lr", direction: "rtl", height: "9rem" }}
+                  title="Wheel size (17-24 inch)"
+                />
+                <span className="text-center text-[9px] leading-tight text-neutral-500">
+                  wheel
+                  <br />
+                  size
+                </span>
+                <button
+                  onClick={() => onSizeCommit(null)}
+                  className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-300 hover:border-neutral-400"
+                  title="Back to the original wheel size"
+                >
+                  reset
+                </button>
+                <button
+                  onClick={onSweep}
+                  disabled={busy}
+                  className="rounded border border-dashed border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-300 hover:border-indigo-400 disabled:opacity-40"
+                  title="Pre-render all 8 sizes once - then the slider responds instantly"
+                >
+                  {sweepText ?? "⚡ all"}
+                </button>
               </div>
             )}
           </div>
@@ -765,27 +869,16 @@ export default function Configurator() {
             </div>
           </Panel>
 
-          <Panel title="Wheel colour &amp; size">
+          <Panel title="Wheel colour">
             <Swatches
               colors={WHEEL_COLORS}
               selected={wheelColor}
               onSelect={setWheelColor}
               onClear={() => setWheelColor(null)}
             />
-            <div className="mt-4">
-              <p className="mb-2 text-xs uppercase tracking-wide text-neutral-500">Wheel size</p>
-              <div className="flex flex-wrap gap-1.5">
-                <FinishPill active={wheelSize === null} onClick={() => setWheelSize(null)} label="Keep" />
-                {[17, 18, 19, 20, 21, 22, 23, 24].map((s) => (
-                  <FinishPill
-                    key={s}
-                    active={wheelSize === s}
-                    onClick={() => setWheelSize(s)}
-                    label={`${s}"`}
-                  />
-                ))}
-              </div>
-            </div>
+            <p className="mt-3 text-xs text-neutral-500">
+              Wheel size: use the slider on the preview — each size renders once, then scrubs instantly.
+            </p>
           </Panel>
 
           {error && (

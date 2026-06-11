@@ -6,7 +6,11 @@ Upload a photo of a car (or pick a sample), then:
 
 - 🎨 **Respray it any colour** — 16 presets or a full colour wheel, photorealistic
 - ✨ **Pick a paint finish** — gloss, metallic, matte, satin or pearlescent
-- 🛞 **Fit real alloy wheels** — 350+ genuine products (BBS, OZ Racing, Velare, 1FORM, MOMO…); the AI copies the actual wheel from its product photo onto your car
+- 🛞 **Fit real alloy wheels** — 2,600+ genuine products across 50+ brands (BBS,
+  OZ Racing, Rota, Borbet, Bola, Japan Racing…); the AI copies the actual wheel
+  from its product photo onto your car
+- 📏 **Wheel size slider (17–24")** — each size renders once, then scrubs instantly;
+  one click pre-renders the whole range
 - 🎲 **Roll the dice** — random colour + random wheels, instantly rendered
 - 📱 Works on desktop and phones, with a before/after compare slider
 - 🌍 Optional one-click public share link so friends can use it from anywhere
@@ -60,14 +64,16 @@ Next.js frontend ──proxy──> FastAPI backend ──> Qwen-Image-Edit-2511
 - **One render at a time** — a FIFO queue serializes GPU work; everyone sees
   their queue position live.
 
-## Adding more wheel brands
+## Refreshing the wheel catalog
 
 ```powershell
 cd backend
+.venv\Scripts\python.exe scrape_all.py        # every brand on wheelmania.co.uk
+# or one brand:
 .venv\Scripts\python.exe scrape_catalog.py https://wheelmania.co.uk/alloy-wheels/rotiform/ rotiform "Rotiform"
 ```
 
-Restart and the brand appears in the dropdown.
+Restart the backend and new brands appear in the dropdown.
 
 ## Notes & credits
 
