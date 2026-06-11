@@ -118,7 +118,12 @@ def apply_edit(
         seg += ", adapted to the car's wheel size, angle and perspective"
         parts.append(seg)
     elif wheel_color:
-        parts.append(f"change the wheel rims to {describe_color(wheel_color)}")
+        # Recolour ONLY — without the explicit design-preservation wording the
+        # model happily invents a new spoke pattern along with the colour.
+        parts.append(
+            f"repaint the existing wheel rims in {describe_color(wheel_color)}, "
+            "keeping the exact same wheel design, spoke pattern and size"
+        )
 
     if not parts:
         return image
@@ -126,6 +131,8 @@ def apply_edit(
     keep = ["the exact same car", "same body shape", "same windows"]
     if not wheels_changing:
         keep.append("same wheels")
+    elif wheel_color and not cat:
+        keep.append("the same wheel design and spoke pattern (only the rim colour changes)")
     keep += ["same background", "same lighting, reflections and camera angle"]
     instruction = (
         "Edit this photo of a car: "
