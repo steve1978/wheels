@@ -7,8 +7,8 @@ from . import config
 
 # Stock cars = the bundled sample photos (served via /static/samples/...).
 STOCK_CARS = [
-    {"id": "cadillac", "name": "1972 Cadillac", "file": "cadillac.jpg"},
-    {"id": "sentra", "name": "Nissan Sentra", "file": "sentra.jpg"},
+    {"id": "focus-rs", "name": "Ford Focus RS", "file": "focus-rs.jpg"},
+    {"id": "ferrari-488", "name": "Ferrari 488 Spider", "file": "ferrari-488.jpg"},
 ]
 
 
