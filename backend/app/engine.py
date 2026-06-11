@@ -118,11 +118,13 @@ def apply_edit(
         seg += ", adapted to the car's wheel size, angle and perspective"
         parts.append(seg)
     elif wheel_color:
-        # Recolour ONLY — without the explicit design-preservation wording the
-        # model happily invents a new spoke pattern along with the colour.
+        # Recolour ONLY — the model loves to invent a new spoke pattern along
+        # with the colour, so the wording must be forceful and specific.
         parts.append(
-            f"repaint the existing wheel rims in {describe_color(wheel_color)}, "
-            "keeping the exact same wheel design, spoke pattern and size"
+            f"repaint the car's existing wheel rims in {describe_color(wheel_color)}. "
+            "CRITICAL: the wheels must remain IDENTICAL in design — the same number "
+            "of spokes, the same spoke shape, the same centre cap, the same rim size. "
+            "Only the colour of the wheel surfaces changes, nothing else about them"
         )
 
     if not parts:
@@ -142,6 +144,8 @@ def apply_edit(
         + ". Photorealistic, only change what was asked."
     )
     negative = "different car, changed shape, distorted, deformed, artifacts, text, watermark, cartoon"
+    if wheel_color and not cat:
+        negative += ", different wheel design, new wheels, changed spoke pattern, redesigned wheels"
 
     PROGRESS["queued"] += 1
     with _gpu_lock:
