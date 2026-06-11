@@ -105,6 +105,7 @@ export default function Configurator() {
   const [bodyFinish, setBodyFinish] = useState<BodyFinish | null>(null);
   const [wheelId, setWheelId] = useState<string | null>(null);
   const [wheelColor, setWheelColor] = useState<string | null>(null);
+  const [wheelSize, setWheelSize] = useState<number | null>(null);
   const [wheels, setWheels] = useState<Wheel[]>([]);
   const [brand, setBrand] = useState("BBS");
   const [stock, setStock] = useState<StockCar[]>([]);
@@ -163,6 +164,7 @@ export default function Configurator() {
     bodyFinish: BodyFinish | null;
     wheelId: string | null;
     wheelColor: string | null;
+    wheelSize: number | null;
     seed: number;
   };
 
@@ -198,6 +200,7 @@ export default function Configurator() {
             bodyFinish: p.bodyFinish,
             wheelId: p.wheelId,
             wheelColor: p.wheelColor,
+            wheelSize: p.wheelSize,
             seed: p.seed,
           },
           (j) => {
@@ -226,6 +229,7 @@ export default function Configurator() {
           p.bodyFinish && `${p.bodyFinish} finish`,
           p.wheelId && `wheels ${p.wheelId}`,
           p.wheelColor && `rims ${p.wheelColor}`,
+          p.wheelSize && `${p.wheelSize}"`,
         ]
           .filter(Boolean)
           .join(", ");
@@ -257,9 +261,16 @@ export default function Configurator() {
     []
   );
 
-  const onApply = () => runEdit({ bodyColor, bodyFinish, wheelId, wheelColor, seed: 0 });
+  const onApply = () => runEdit({ bodyColor, bodyFinish, wheelId, wheelColor, wheelSize, seed: 0 });
   const onReroll = () =>
-    runEdit({ bodyColor, bodyFinish, wheelId, wheelColor, seed: Math.floor(Math.random() * 1_000_000) });
+    runEdit({
+      bodyColor,
+      bodyFinish,
+      wheelId,
+      wheelColor,
+      wheelSize,
+      seed: Math.floor(Math.random() * 1_000_000),
+    });
 
   /** Roll the dice: random colour, random finish, random wheel from the whole
    * catalog — selections update in the UI and the render fires immediately. */
@@ -277,12 +288,14 @@ export default function Configurator() {
     setBodyFinish(finish);
     setWheelId(wheel.id);
     setWheelColor(null); // let the product wheel keep its real finish
+    setWheelSize(null);
     if (wheel.group) setBrand(wheel.group);
     runEdit({
       bodyColor: colour,
       bodyFinish: finish,
       wheelId: wheel.id,
       wheelColor: null,
+      wheelSize: null,
       seed: Math.floor(Math.random() * 1_000_000),
     });
   };
@@ -305,6 +318,7 @@ export default function Configurator() {
     setBodyFinish(null);
     setWheelId(null);
     setWheelColor(null);
+    setWheelSize(null);
   };
 
   const brands = useMemo(
@@ -316,7 +330,10 @@ export default function Configurator() {
   }, [brands, brand]);
 
   const canApply =
-    !!source && !busy && status === "ready" && !!(bodyColor || bodyFinish || wheelId || wheelColor);
+    !!source &&
+    !busy &&
+    status === "ready" &&
+    !!(bodyColor || bodyFinish || wheelId || wheelColor || wheelSize);
 
   // ---------------------------------------------------------- phone layout
   if (isMobile) {
@@ -528,14 +545,30 @@ export default function Configurator() {
           )}
 
           {mobileTab === "rims" && (
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Wheel colour</p>
-              <Swatches
-                colors={WHEEL_COLORS}
-                selected={wheelColor}
-                onSelect={setWheelColor}
-                onClear={() => setWheelColor(null)}
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wide text-neutral-500">Wheel colour</p>
+                <Swatches
+                  colors={WHEEL_COLORS}
+                  selected={wheelColor}
+                  onSelect={setWheelColor}
+                  onClear={() => setWheelColor(null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wide text-neutral-500">Wheel size</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <FinishPill active={wheelSize === null} onClick={() => setWheelSize(null)} label="Keep" />
+                  {[17, 18, 19, 20, 21, 22, 23, 24].map((s) => (
+                    <FinishPill
+                      key={s}
+                      active={wheelSize === s}
+                      onClick={() => setWheelSize(s)}
+                      label={`${s}"`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </section>
@@ -732,13 +765,27 @@ export default function Configurator() {
             </div>
           </Panel>
 
-          <Panel title="Wheel colour">
+          <Panel title="Wheel colour &amp; size">
             <Swatches
               colors={WHEEL_COLORS}
               selected={wheelColor}
               onSelect={setWheelColor}
               onClear={() => setWheelColor(null)}
             />
+            <div className="mt-4">
+              <p className="mb-2 text-xs uppercase tracking-wide text-neutral-500">Wheel size</p>
+              <div className="flex flex-wrap gap-1.5">
+                <FinishPill active={wheelSize === null} onClick={() => setWheelSize(null)} label="Keep" />
+                {[17, 18, 19, 20, 21, 22, 23, 24].map((s) => (
+                  <FinishPill
+                    key={s}
+                    active={wheelSize === s}
+                    onClick={() => setWheelSize(s)}
+                    label={`${s}"`}
+                  />
+                ))}
+              </div>
+            </div>
           </Panel>
 
           {error && (

@@ -53,6 +53,7 @@ class EditRequest(BaseModel):
     body_finish: str | None = None  # gloss | metallic | matte | satin | pearl
     wheel_id: str | None = None
     wheel_color: str | None = None
+    wheel_size: int | None = None   # 17-24 (inches)
     seed: int = 0
 
 
@@ -141,6 +142,7 @@ def _render_worker():
                 body_finish=req.body_finish,
                 wheel_id=req.wheel_id,
                 wheel_color=req.wheel_color,
+                wheel_size=(req.wheel_size if req.wheel_size in range(17, 25) else None),
                 seed=req.seed,
             )
             j.update(

@@ -20,6 +20,7 @@ export type EditRequest = {
   bodyFinish?: BodyFinish | null; // paint finish; null = leave to the engine default
   wheelId?: string | null;    // wheel design from the library
   wheelColor?: string | null; // hex
+  wheelSize?: number | null;  // 17-24 inches
   seed?: number;              // vary for a different take on the same edit
 };
 
@@ -78,6 +79,7 @@ export async function edit(
     body_finish: req.bodyFinish ?? null,
     wheel_id: req.wheelId ?? null,
     wheel_color: req.wheelColor ?? null,
+    wheel_size: req.wheelSize ?? null,
     seed: req.seed ?? 0,
   });
   for (let misses = 0; ; ) {

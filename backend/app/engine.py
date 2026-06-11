@@ -82,12 +82,34 @@ def get_editor():
     return _editor
 
 
+# The model can't measure inches; pair the number with a strong directional cue.
+_SIZE_CUE = {
+    17: "a modest, near-standard diameter",
+    18: "a slightly upsized diameter",
+    19: "a moderately upsized diameter",
+    20: "a noticeably larger diameter",
+    21: "a large aftermarket diameter",
+    22: "a very large aftermarket diameter",
+    23: "a dramatically oversized show-car diameter",
+    24: "an extreme, maximum show-car diameter",
+}
+
+
+def _size_clause(size: int) -> str:
+    cue = _SIZE_CUE.get(size, "a larger diameter")
+    return (
+        f", sized as {size}-inch wheels ({cue} for this car) with correspondingly "
+        "lower-profile tyres so the wheel fills more of the arch"
+    )
+
+
 def apply_edit(
     image: Image.Image,
     body_color: str | None = None,
     body_finish: str | None = None,
     wheel_id: str | None = None,
     wheel_color: str | None = None,
+    wheel_size: int | None = None,
     seed: int = 0,
 ) -> Image.Image:
     from . import library
@@ -104,7 +126,7 @@ def apply_edit(
 
     ref_image = None
     cat = library.catalog_lookup(wheel_id)
-    wheels_changing = bool(cat or wheel_color)
+    wheels_changing = bool(cat or wheel_color or wheel_size)
     if cat:
         ref_image = Image.open(cat["path"])
         seg = (
@@ -115,17 +137,32 @@ def apply_edit(
             seg += f" but finished in {describe_color(wheel_color)}"
         else:
             seg += f" and its {cat['finish']} finish"
-        seg += ", adapted to the car's wheel size, angle and perspective"
+        if wheel_size:
+            seg += ", adapted to the car's angle and perspective" + _size_clause(wheel_size)
+        else:
+            seg += ", adapted to the car's wheel size, angle and perspective"
         parts.append(seg)
-    elif wheel_color:
-        # Recolour ONLY — the model loves to invent a new spoke pattern along
-        # with the colour, so the wording must be forceful and specific.
-        parts.append(
-            f"repaint the car's existing wheel rims in {describe_color(wheel_color)}. "
-            "CRITICAL: the wheels must remain IDENTICAL in design — the same number "
-            "of spokes, the same spoke shape, the same centre cap, the same rim size. "
-            "Only the colour of the wheel surfaces changes, nothing else about them"
+    elif wheel_color or wheel_size:
+        # Recolour and/or resize the EXISTING wheels — the model loves to invent
+        # a new spoke pattern, so the wording must be forceful and specific.
+        actions = []
+        if wheel_color:
+            actions.append(f"repaint the car's existing wheel rims in {describe_color(wheel_color)}")
+        if wheel_size:
+            cue = _SIZE_CUE.get(wheel_size, "a larger diameter")
+            actions.append(
+                f"enlarge the car's existing wheels to {wheel_size}-inch ({cue} for "
+                "this car) with correspondingly lower-profile tyres so the wheel "
+                "fills more of the arch"
+            )
+        seg = ", and ".join(actions)
+        seg += (
+            ". CRITICAL: the wheels must remain IDENTICAL in design — the same number "
+            "of spokes, the same spoke shape, the same centre cap"
         )
+        if not wheel_size:
+            seg += ", the same rim size"
+        parts.append(seg)
 
     if not parts:
         return image
@@ -133,8 +170,8 @@ def apply_edit(
     keep = ["the exact same car", "same body shape", "same windows"]
     if not wheels_changing:
         keep.append("same wheels")
-    elif wheel_color and not cat:
-        keep.append("the same wheel design and spoke pattern (only the rim colour changes)")
+    elif (wheel_color or wheel_size) and not cat:
+        keep.append("the same wheel design and spoke pattern")
     keep += ["same background", "same lighting, reflections and camera angle"]
     instruction = (
         "Edit this photo of a car: "
