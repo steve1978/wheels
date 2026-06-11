@@ -379,6 +379,27 @@ export default function Configurator() {
     status === "ready" &&
     !!(bodyColor || bodyFinish || wheelId || wheelColor || wheelSize);
 
+  // Always-visible list of what Apply will change, so a leftover selection
+  // (e.g. a wheel colour from earlier) can't silently affect the next render.
+  const changeSummary = useMemo(() => {
+    const bits: string[] = [];
+    if (bodyColor) bits.push(`body ${bodyColor}`);
+    if (bodyFinish) bits.push(`${bodyFinish} paint`);
+    if (wheelId) {
+      const w = wheels.find((x) => x.id === wheelId);
+      const g = w?.group ?? "";
+      bits.push(
+        !w ? "new wheels" : w.name.toLowerCase().startsWith(g.toLowerCase()) ? w.name : `${g} ${w.name}`
+      );
+    }
+    if (wheelColor) {
+      const c = WHEEL_COLORS.find((x) => x.hex.toLowerCase() === wheelColor.toLowerCase());
+      bits.push(`rims ${c ? c.name.toLowerCase() : wheelColor}`);
+    }
+    if (wheelSize) bits.push(`${wheelSize}″ wheels`);
+    return bits.join("  ·  ");
+  }, [bodyColor, bodyFinish, wheelId, wheelColor, wheelSize, wheels]);
+
   // ---------------------------------------------------------- phone layout
   if (isMobile) {
     const TABS: { id: MobileTab; name: string }[] = [
@@ -577,7 +598,10 @@ export default function Configurator() {
                     <div key={w.id} className="aspect-square">
                       <WheelTile
                         selected={wheelId === w.id}
-                        onClick={() => setWheelId(w.id)}
+                        onClick={() => {
+                          setWheelId(w.id);
+                          setWheelColor(null); // show the product's real finish
+                        }}
                         label={w.name}
                         sub={w.finish}
                         thumb={w.thumb || undefined}
@@ -640,6 +664,9 @@ export default function Configurator() {
               {error}
             </p>
           )}
+          <p className="px-1 text-center text-[11px] text-neutral-500">
+            {changeSummary ? `Will change: ${changeSummary}` : "No changes selected yet"}
+          </p>
           <div className="flex gap-2">
             <button
               onClick={onRoll}
@@ -895,6 +922,9 @@ export default function Configurator() {
           >
             🎲 Roll the dice
           </button>
+          <p className="px-1 text-center text-xs text-neutral-500">
+            {changeSummary ? `Will change: ${changeSummary}` : "No changes selected yet"}
+          </p>
           <button
             onClick={onApply}
             disabled={!canApply}
@@ -933,7 +963,10 @@ export default function Configurator() {
                   <div key={w.id} className="h-28 w-28 shrink-0">
                     <WheelTile
                       selected={wheelId === w.id}
-                      onClick={() => setWheelId(w.id)}
+                      onClick={() => {
+                        setWheelId(w.id);
+                        setWheelColor(null); // show the product's real finish; recolour after if wanted
+                      }}
                       label={w.name}
                       sub={w.finish}
                       thumb={w.thumb || undefined}
