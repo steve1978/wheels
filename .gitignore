@@ -1,0 +1,30 @@
+# --- Big / machine-specific (recreated by start.bat) -------------------------
+# AI model weights (~30GB) — auto-downloaded from HuggingFace on first launch
+models/
+# Python environment — created by start.bat
+backend/.venv/
+# Wheel product images — fetched from wheelmania.co.uk by start.bat
+# (supplier's copyright: each user fetches their own copy; never redistributed)
+backend/wheel_catalog/
+
+# --- Generated at runtime -----------------------------------------------------
+backend/outputs/
+backend/*.log
+*.log
+YOUR-LINK.txt
+
+# --- Python -------------------------------------------------------------------
+__pycache__/
+*.pyc
+
+# --- Node / Next.js -----------------------------------------------------------
+node_modules/
+.next/
+out/
+.env*.local
+*.tsbuildinfo
+
+# --- OS / editor ---------------------------------------------------------------
+Thumbs.db
+.DS_Store
+.claude/
