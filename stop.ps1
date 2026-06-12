@@ -13,6 +13,15 @@ foreach ($p in @($backend) + @($frontend) + @($tunnel)) {
         $any = $true
     }
 }
+# Belt and braces: whatever still owns the app's ports goes too.
+foreach ($port in @(8000, 3000)) {
+    Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -Expand OwningProcess -Unique | ForEach-Object {
+            Write-Host ("  stopping port-{0} owner (PID {1})" -f $port, $_)
+            Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue
+            $any = $true
+        }
+}
 Remove-Item (Join-Path $PSScriptRoot "YOUR-LINK.txt") -Force -ErrorAction SilentlyContinue
 if ($any) {
     Write-Host "  Wheels is now OFF. Nothing is reachable from the internet." -ForegroundColor Green
