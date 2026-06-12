@@ -24,10 +24,12 @@ PROMPT = (
     "Look at this alloy wheel product photo. Describe its design in ONE short line "
     "for an image-generation prompt. Start with the exact spoke count — count "
     "carefully (for split/twin spokes phrase it like 'five pairs of twin spokes'). "
-    "Then spoke shape and thickness, then distinctive features (deep dish, polished "
-    "lip, cross-lace mesh, holes, lettering on the face, directional curve). "
-    "Example: 'exactly five wide flat solid spokes forming a bold star, chunky "
-    "retro rally style'. No brand names, no colours, no preamble."
+    "Then spoke shape and thickness. Then AT MOST TWO distinctive features, and "
+    "ONLY if clearly visible in the photo — e.g. a deep dish, a polished lip, "
+    "cross-lace mesh, holes in the spokes, lettering on the face, a directional "
+    "curve. Most wheels have NO such features: do not list features you cannot "
+    "actually see. Example: 'exactly five wide flat solid spokes forming a bold "
+    "star, chunky retro rally style'. No brand names, no colours, no preamble."
 )
 
 
