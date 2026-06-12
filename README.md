@@ -41,6 +41,7 @@ cd Wheels
 | `start.bat` | Start the app locally (first run also installs everything) |
 | `share.bat` | Add a public link to the running app (Cloudflare tunnel; never starts a second copy) |
 | `stop.bat` | Switch everything off, including the public link |
+| `stats.bat` | Usage counts (local vs share-link visits/renders) + open the gallery of saved images |
 
 On first run, `start.bat` will:
 
@@ -91,6 +92,10 @@ Restart the backend and new brands appear in the dropdown.
 - Model: [Qwen-Image-Edit-2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511)
   (Apache-2.0) with the [Lightning LoRA](https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning)
   and [Unsloth GGUF quants](https://huggingface.co/unsloth/Qwen-Image-Edit-2511-GGUF).
+- **Image storage**: every upload and its rendered result are saved on the host
+  machine under `backend/gallery/` so the owner can review them (`stats.bat` shows
+  usage counts and opens the folder). Nothing is sent anywhere else. If you share
+  your link, tell your friends their photos are stored on your machine.
 - The optional share link uses a [Cloudflare quick tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/):
   no ports are opened on your router and the random URL rotates each start —
   but anyone who has the link can submit renders while it's up.

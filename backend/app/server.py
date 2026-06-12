@@ -6,6 +6,7 @@ The heavy model loads lazily on the first /api/edit call.
 from __future__ import annotations
 
 import itertools
+import json
 import queue as queue_mod
 import threading
 import time
@@ -22,6 +23,54 @@ from .imageio import data_url_to_pil, pil_to_data_url
 
 MAX_BODY_BYTES = 16 * 1024 * 1024  # ~16MB JSON body ≈ a 12MB image as base64
 MAX_QUEUE = 5                      # max renders waiting (positions are shown in the UI)
+
+# ---------------------------------------------------------------- usage stats
+# Requests arriving through the Cloudflare tunnel carry Cf-Connecting-Ip (the
+# visitor's real IP); local requests don't. That cleanly splits external vs
+# local usage. Persisted to stats.json so counts survive restarts.
+STATS_PATH = config.BACKEND_DIR / "stats.json"
+GALLERY_DIR = config.BACKEND_DIR / "gallery"
+_STATS_LOCK = threading.Lock()
+
+
+def _load_stats() -> dict:
+    base = {
+        "visits_local": 0,
+        "visits_external": 0,
+        "renders_local": 0,
+        "renders_external": 0,
+        "unique_external_ips": [],
+        "by_day": {},
+    }
+    try:
+        base.update(json.loads(STATS_PATH.read_text()))
+    except Exception:
+        pass
+    return base
+
+
+STATS = _load_stats()
+
+
+def _visitor(request: Request) -> tuple[str, str | None]:
+    """('external', ip) for tunnel traffic, ('local', None) otherwise."""
+    ip = request.headers.get("cf-connecting-ip")
+    return ("external", ip) if ip else ("local", None)
+
+
+def _bump(kind: str, request: Request) -> str:
+    src, ip = _visitor(request)
+    with _STATS_LOCK:
+        STATS[f"{kind}_{src}"] = STATS.get(f"{kind}_{src}", 0) + 1
+        day = STATS["by_day"].setdefault(time.strftime("%Y-%m-%d"), {})
+        day[f"{kind}_{src}"] = day.get(f"{kind}_{src}", 0) + 1
+        if ip and ip not in STATS["unique_external_ips"]:
+            STATS["unique_external_ips"].append(ip)
+        try:
+            STATS_PATH.write_text(json.dumps(STATS, indent=1))
+        except Exception:
+            pass
+    return src
 
 
 @asynccontextmanager
@@ -68,6 +117,18 @@ def healthz():
     return {"ok": True}
 
 
+@app.get("/api/stats")
+def stats():
+    with _STATS_LOCK:
+        s = dict(STATS)
+    gallery_pairs = len(list(GALLERY_DIR.glob("*/*-result.jpg"))) if GALLERY_DIR.exists() else 0
+    return {
+        **s,
+        "unique_external_visitors": len(s.get("unique_external_ips", [])),
+        "gallery_renders_saved": gallery_pairs,
+    }
+
+
 @app.get("/readyz")
 def readyz():
     return {"ready": engine.is_ready(), "waiting": _queue_depth()}
@@ -79,7 +140,8 @@ def progress():
 
 
 @app.get("/api/stock-cars")
-def stock_cars():
+def stock_cars(request: Request):
+    _bump("visits", request)  # fetched once per page load — a good visit proxy
     return library.stock_cars(_base_url())
 
 
@@ -125,6 +187,39 @@ def _position(jid: str) -> int | None:
     )
 
 
+def _save_to_gallery(jid: str, req: "EditRequest", src: str, ip: str | None, img, out):
+    """Archive the upload + result pair so the host can browse them later."""
+    try:
+        day_dir = GALLERY_DIR / time.strftime("%Y-%m-%d")
+        day_dir.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%H%M%S")
+        base = f"{stamp}-{jid[:6]}"
+        img.convert("RGB").save(day_dir / f"{base}-original.jpg", "JPEG", quality=90)
+        out.convert("RGB").save(day_dir / f"{base}-result.jpg", "JPEG", quality=92)
+        entry = {
+            "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "job": jid[:6],
+            "source": src,
+            "ip": ip,
+            "edits": {
+                k: v
+                for k, v in {
+                    "body_color": req.body_color,
+                    "body_finish": req.body_finish,
+                    "wheel_id": req.wheel_id,
+                    "wheel_color": req.wheel_color,
+                    "wheel_size": req.wheel_size,
+                }.items()
+                if v
+            },
+            "files": [f"{base}-original.jpg", f"{base}-result.jpg"],
+        }
+        with open(GALLERY_DIR / "index.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass  # archiving must never break a render
+
+
 def _render_worker():
     while True:
         jid = _JOB_QUEUE.get()
@@ -150,6 +245,7 @@ def _render_worker():
                 image=pil_to_data_url(out, fmt="JPEG", quality=92),
                 ms=int((time.perf_counter() - t0) * 1000),
             )
+            _save_to_gallery(jid, req, j.get("src", "local"), j.get("ip"), img, out)
         except Exception as e:  # surfaced to the client via job status
             j.update(status="error", error=str(e)[:300])
 
@@ -161,6 +257,8 @@ def edit(req: EditRequest, request: Request):
     if _queue_depth() >= MAX_QUEUE:
         raise HTTPException(429, "The GPU queue is full — try again in a minute.")
 
+    src = _bump("renders", request)
+    _, ip = _visitor(request)
     jid = uuid.uuid4().hex
     with _JOBS_LOCK:
         JOBS[jid] = {
@@ -171,6 +269,8 @@ def edit(req: EditRequest, request: Request):
             "t": time.time(),
             "ticket": next(_TICKETS),
             "req": req,
+            "src": src,
+            "ip": ip,
         }
         _prune_jobs()
     _JOB_QUEUE.put(jid)
