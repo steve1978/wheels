@@ -19,6 +19,29 @@ COLLECTIONS = [
 ]
 BRAND_SLUG = "fifteen52"
 BRAND_NAME = "fifteen52"
+
+# Design descriptions for bold/simple wheels: the AI tends to substitute a
+# generic sporty wheel for these unless the geometry is spelled out in words
+# alongside the product photo (proven dramatically better for the Tarmac).
+DESCS = {
+    "tarmac-evo": None,  # different design — don't inherit the plain-tarmac desc
+    "tarmac": (
+        "exactly FIVE wide flat solid spokes forming a bold star, chunky retro "
+        "rally style with a circular lip, completely unlike thin multi-spoke wheels"
+    ),
+    "turbomac": (
+        "exactly FIVE wide flat solid spokes, each with one small round hole, "
+        "chunky retro rally style, completely unlike thin multi-spoke wheels"
+    ),
+    "integrale": "six-spoke rally design with a deep concave face and chunky squared spokes",
+}
+
+
+def design_desc(slug: str) -> str | None:
+    for pat, d in DESCS.items():
+        if pat in slug:
+            return d
+    return None
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 
@@ -68,15 +91,17 @@ def main():
                     except Exception as e:
                         print(f"  !! image failed for {title}: {e}", flush=True)
                         continue
-                items.append(
-                    {
-                        "id": f"cat:{BRAND_SLUG}:{slug}",
-                        "brand": BRAND_NAME,
-                        "model": model.strip(),
-                        "finish": finish.strip() or "Standard",
-                        "file": f"{BRAND_SLUG}/{slug}.jpg",
-                    }
-                )
+                entry = {
+                    "id": f"cat:{BRAND_SLUG}:{slug}",
+                    "brand": BRAND_NAME,
+                    "model": model.strip(),
+                    "finish": finish.strip() or "Standard",
+                    "file": f"{BRAND_SLUG}/{slug}.jpg",
+                }
+                desc = design_desc(slug)
+                if desc:
+                    entry["desc"] = desc
+                items.append(entry)
                 print(f"  ok {title}", flush=True)
             page += 1
 

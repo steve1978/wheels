@@ -134,8 +134,12 @@ def apply_edit(
             f"completely REPLACE the car's wheels with the {cat['brand']} {cat['model']} "
             "alloy wheel shown in the first image (the wheel product photo). The car's "
             "original wheels must be entirely gone — the result must clearly show the "
-            "new wheel's distinct spoke design copied from the product photo"
+            "new wheel's distinct design copied from the product photo: look at the "
+            "product photo carefully and reproduce the exact same number of spokes and "
+            "the same spoke shape and thickness, not a generic sporty wheel"
         )
+        if cat.get("desc"):
+            seg += f". This wheel's design: {cat['desc']}"
         if wheel_color:
             seg += f" but finished in {describe_color(wheel_color)}"
         else:
