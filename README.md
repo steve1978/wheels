@@ -34,7 +34,15 @@ git clone <this repo>
 cd Wheels
 ```
 
-**Double-click `start.bat`.** That's it. On first run it will:
+**Double-click `start.bat`.** That's it. Three scripts run everything:
+
+| Script | What it does |
+|---|---|
+| `start.bat` | Start the app locally (first run also installs everything) |
+| `share.bat` | Add a public link to the running app (Cloudflare tunnel; never starts a second copy) |
+| `stop.bat` | Switch everything off, including the public link |
+
+On first run, `start.bat` will:
 
 1. Check your GPU, Python and Node.js (offering to install what's missing)
 2. Create the Python environment and install PyTorch + libraries (~3GB)

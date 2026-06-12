@@ -224,50 +224,13 @@ for ($i = 0; $i -lt 600; $i++) {
 }
 Write-Host $(if ($ready) { " ready" } else { " still warming (it will finish in the background)" })
 
-# Optional public share link.
-Write-Host ""
-$share = Read-Host "  Share publicly so friends can use it from their devices? [y/N]"
-$url = $null
-if ($share -match "^[Yy]") {
-    $cloudflared = (Get-Command cloudflared -ErrorAction SilentlyContinue).Source
-    if (-not $cloudflared) {
-        $cloudflared = @("$env:ProgramFiles\cloudflared\cloudflared.exe", "${env:ProgramFiles(x86)}\cloudflared\cloudflared.exe") |
-            Where-Object { Test-Path $_ } | Select-Object -First 1
-    }
-    if (-not $cloudflared) {
-        $ans = Read-Host "        cloudflared (free tunnel tool) is needed - install with winget? [Y/n]"
-        if ($ans -eq "" -or $ans -match "^[Yy]") {
-            winget install --id Cloudflare.cloudflared --accept-source-agreements --accept-package-agreements --silent | Out-Null
-            $cloudflared = @("$env:ProgramFiles\cloudflared\cloudflared.exe", "${env:ProgramFiles(x86)}\cloudflared\cloudflared.exe") |
-                Where-Object { Test-Path $_ } | Select-Object -First 1
-        }
-    }
-    if ($cloudflared) {
-        $log = "$root\tunnel.log"
-        Remove-Item $log -Force -ErrorAction SilentlyContinue
-        Start-Process -FilePath $cloudflared -ArgumentList "tunnel", "--url", "http://localhost:3000" -WindowStyle Minimized -RedirectStandardError $log
-        for ($i = 0; $i -lt 30; $i++) {
-            Start-Sleep -Seconds 2
-            if (Test-Path $log) {
-                $m = Select-String -Path $log -Pattern "https://[a-z0-9-]+\.trycloudflare\.com" -AllMatches | ForEach-Object { $_.Matches } | Select-Object -First 1
-                if ($m) { $url = $m.Value; break }
-            }
-        }
-    } else { Warn "couldn't set up the tunnel - running locally only" }
-}
-
 Start-Process "http://localhost:3000"
 Write-Host ""
 Write-Host "  ==============================================================" -ForegroundColor Green
-Write-Host "   Wheels is RUNNING" -ForegroundColor Green
+Write-Host "   Wheels is RUNNING (locally)" -ForegroundColor Green
 Write-Host ""
-Write-Host "   On this PC:    http://localhost:3000" -ForegroundColor White
-if ($url) {
-    Write-Host "   Share link:    $url" -ForegroundColor White
-    Write-Host "                  (anyone with this link can use it; new link each start)"
-    "Wheels share link: $url" | Set-Content -Path "$root\YOUR-LINK.txt" -Encoding utf8
-}
-Write-Host ""
-Write-Host "   To stop:       double-click stop.bat" -ForegroundColor White
+Write-Host "   On this PC:      http://localhost:3000" -ForegroundColor White
+Write-Host "   Share publicly:  double-click share.bat" -ForegroundColor White
+Write-Host "   To stop:         double-click stop.bat" -ForegroundColor White
 Write-Host "  ==============================================================" -ForegroundColor Green
 Write-Host ""
