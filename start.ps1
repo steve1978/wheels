@@ -51,42 +51,66 @@ if ($gpuMem -lt 15000) {
 }
 
 # ------------------------------------------------------------- 2. Python ----
-Step 2 "Checking Python..."
-$python = $null
-foreach ($cand in @("python", "python3", "py")) {
-    $c = Get-Command $cand -ErrorAction SilentlyContinue
-    if ($c) {
-        $v = & $c.Source --version 2>&1
-        if ($v -match "Python 3\.(1[0-2])\.") { $python = $c.Source; break }
+# NOTE: never trust PATH alone — a double-clicked .bat inherits Explorer's
+# CACHED environment, which misses recent installs. Probe known locations too,
+# and after an install keep going in THIS run (no "close and re-run" dance).
+function Resolve-Python {
+    foreach ($cand in @("python", "python3", "py")) {
+        $c = Get-Command $cand -ErrorAction SilentlyContinue
+        if ($c) {
+            $v = & $c.Source --version 2>&1
+            if ($v -match "Python 3\.(1[0-2])\.") { return $c.Source }
+        }
     }
+    foreach ($d in @("$env:LOCALAPPDATA\Programs\Python", "$env:ProgramFiles\Python312", "$env:ProgramFiles\Python311", "$env:ProgramFiles\Python310")) {
+        if (Test-Path $d) {
+            $exe = Get-ChildItem $d -Filter python.exe -Recurse -Depth 1 -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($exe) { return $exe.FullName }
+        }
+    }
+    return $null
 }
+
+Step 2 "Checking Python..."
+$python = Resolve-Python
 if (-not $python -and (Test-Path $venvPy)) { $python = $venvPy }  # venv already built
 if (-not $python) {
     Warn "Python 3.10-3.12 not found."
     $ans = Read-Host "        Install Python 3.12 automatically with winget? [Y/n]"
     if ($ans -eq "" -or $ans -match "^[Yy]") {
         winget install --id Python.Python.3.12 --accept-source-agreements --accept-package-agreements --silent
-        Write-Host "        Python installed - please CLOSE this window and run start.bat again (PATH refresh)." -ForegroundColor Yellow
-        Read-Host "  Press Enter to close"
-        exit 0
-    } else { Die "Python is required. Install 3.12 from python.org, then re-run." }
+        Start-Sleep -Seconds 3
+        $python = Resolve-Python
+    }
+    if (-not $python) { Die "Python is required. Install 3.12 from python.org, then run start.bat again." }
 }
 Ok "Python found: $python"
 
 # ------------------------------------------------------------- 3. Node.js ---
+function Resolve-NodeDir {
+    foreach ($d in @("$env:ProgramFiles\nodejs", "${env:ProgramFiles(x86)}\nodejs", "$env:LOCALAPPDATA\nodejs")) {
+        if (Test-Path (Join-Path $d "node.exe")) { return $d }
+    }
+    $c = Get-Command node -ErrorAction SilentlyContinue
+    if ($c) { return (Split-Path $c.Source -Parent) }
+    return $null
+}
+
 Step 3 "Checking Node.js (runs the web interface)..."
-$node = Get-Command node -ErrorAction SilentlyContinue
-if (-not $node) {
+$nodeDir = Resolve-NodeDir
+if (-not $nodeDir) {
     Warn "Node.js not found."
     $ans = Read-Host "        Install Node.js LTS automatically with winget? [Y/n]"
     if ($ans -eq "" -or $ans -match "^[Yy]") {
         winget install --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements --silent
-        Write-Host "        Node installed - please CLOSE this window and run start.bat again (PATH refresh)." -ForegroundColor Yellow
-        Read-Host "  Press Enter to close"
-        exit 0
-    } else { Die "Node.js is required. Install the LTS from nodejs.org, then re-run." }
+        Start-Sleep -Seconds 3
+        $nodeDir = Resolve-NodeDir
+    }
+    if (-not $nodeDir) { Die "Node.js is required. Install the LTS from nodejs.org, then run start.bat again." }
 }
-Ok "Node.js $(& node --version)"
+# Make node + npm available to this run and every child process we launch.
+$env:Path = "$nodeDir;" + $env:Path
+Ok "Node.js $(& (Join-Path $nodeDir 'node.exe') --version)"
 
 # ------------------------------------------------- 4. Python environment ----
 Step 4 "Checking the AI engine's Python environment..."
