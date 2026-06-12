@@ -131,8 +131,10 @@ def apply_edit(
     if cat:
         ref_image = Image.open(cat["path"])
         seg = (
-            f"replace the car's wheels with the {cat['brand']} {cat['model']} alloy wheel "
-            "shown in the first image (the wheel product photo), copying its exact spoke design"
+            f"completely REPLACE the car's wheels with the {cat['brand']} {cat['model']} "
+            "alloy wheel shown in the first image (the wheel product photo). The car's "
+            "original wheels must be entirely gone — the result must clearly show the "
+            "new wheel's distinct spoke design copied from the product photo"
         )
         if wheel_color:
             seg += f" but finished in {describe_color(wheel_color)}"
@@ -184,6 +186,8 @@ def apply_edit(
     negative = "different car, changed shape, distorted, deformed, artifacts, text, watermark, cartoon"
     if wheel_color and not cat:
         negative += ", different wheel design, new wheels, changed spoke pattern, redesigned wheels"
+    if cat:
+        negative += ", the car's original wheels, unchanged wheels, keeping the existing wheel design"
 
     PROGRESS["queued"] += 1
     with _gpu_lock:

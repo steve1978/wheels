@@ -108,8 +108,14 @@ class QwenEditor:
         ref_image: Image.Image | None = None,  # style reference (e.g. product wheel photo)
     ) -> Image.Image:
         # Lightning -> 4 steps, cfg=1 (no extra uncond pass). Otherwise full quality.
+        # Reference swaps get 6 steps: at 4 the model often keeps the car's
+        # original wheels when they're visually dominant; adherence improves
+        # sharply with the extra steps (~+50% time, swap edits only).
         if steps is None:
-            steps = 4 if self.lightning else 30
+            if self.lightning:
+                steps = 6 if ref_image is not None else 4
+            else:
+                steps = 30
         if true_cfg_scale is None:
             true_cfg_scale = 1.0 if self.lightning else 4.0
         # The pipeline re-buckets every input to ~1Mpix internally, so input size

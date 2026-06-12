@@ -274,7 +274,18 @@ export default function Configurator() {
     []
   );
 
-  const onApply = () => runEdit({ bodyColor, bodyFinish, wheelId, wheelColor, wheelSize, seed: 0 });
+  // Fresh seed each Apply: results vary between attempts, so a stubborn photo
+  // (e.g. a swap the model under-applies at one seed) can succeed on a retry
+  // instead of failing identically forever.
+  const onApply = () =>
+    runEdit({
+      bodyColor,
+      bodyFinish,
+      wheelId,
+      wheelColor,
+      wheelSize,
+      seed: Math.floor(Math.random() * 1_000_000),
+    });
 
   /** Size slider released: serve instantly from cache if this size was already
    * rendered with the current settings; otherwise render it once. */
