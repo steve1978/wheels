@@ -22,14 +22,21 @@ from app import config  # sets HF_HOME before transformers import
 
 PROMPT = (
     "Look at this alloy wheel product photo. Describe its design in ONE short line "
-    "for an image-generation prompt. Start with the exact spoke count — count "
-    "carefully (for split/twin spokes phrase it like 'five pairs of twin spokes'). "
-    "Then spoke shape and thickness. Then AT MOST TWO distinctive features, and "
-    "ONLY if clearly visible in the photo — e.g. a deep dish, a polished lip, "
-    "cross-lace mesh, holes in the spokes, lettering on the face, a directional "
-    "curve. Most wheels have NO such features: do not list features you cannot "
-    "actually see. Example: 'exactly five wide flat solid spokes forming a bold "
-    "star, chunky retro rally style'. No brand names, no colours, no preamble."
+    "for an image-generation prompt.\n"
+    "FIRST decide the family:\n"
+    "- If it is a MESH / cross-lace / interwoven wheel with many (15+) thin "
+    "crossing spokes (like a BBS LM), DO NOT try to count them — say "
+    "'intricate cross-lace mesh with many fine interwoven spokes' and stop after "
+    "one or two extra words.\n"
+    "- Otherwise it is a SPOKED wheel: start with the exact spoke count, counting "
+    "carefully (for split/twin spokes phrase it like 'five pairs of twin spokes'), "
+    "then spoke shape and thickness.\n"
+    "Then AT MOST ONE extra distinctive feature, and ONLY if clearly visible "
+    "(deep dish, polished lip, holes in the spokes, directional curve). Do not "
+    "list features you cannot actually see. Examples: 'exactly five wide flat "
+    "solid spokes forming a bold star, chunky retro rally style' / 'intricate "
+    "cross-lace mesh with many fine interwoven spokes and a polished lip'. "
+    "No brand names, no colours, no preamble."
 )
 
 

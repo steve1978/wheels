@@ -133,13 +133,14 @@ def apply_edit(
         seg = (
             f"completely REPLACE the car's wheels with the {cat['brand']} {cat['model']} "
             "alloy wheel shown in the first image (the wheel product photo). The car's "
-            "original wheels must be entirely gone — the result must clearly show the "
-            "new wheel's distinct design copied from the product photo: look at the "
-            "product photo carefully and reproduce the exact same number of spokes and "
-            "the same spoke shape and thickness, not a generic sporty wheel"
+            "original wheels must be entirely gone. The product photo is the GROUND "
+            "TRUTH for the design — copy its exact spoke pattern, spoke count, spoke "
+            "shape and thickness faithfully, not a generic sporty wheel"
         )
+        # The auto-caption is a fallible hint (a small vision model that miscounts
+        # mesh/lace wheels), so it must never override the photo — phrase it gently.
         if cat.get("desc"):
-            seg += f". This wheel's design: {cat['desc']}"
+            seg += f" (as a rough guide it looks like: {cat['desc']})"
         if wheel_color:
             seg += f" but finished in {describe_color(wheel_color)}"
         else:
