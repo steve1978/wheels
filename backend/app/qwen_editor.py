@@ -113,7 +113,7 @@ class QwenEditor:
         # sharply with the extra steps (~+50% time, swap edits only).
         if steps is None:
             if self.lightning:
-                steps = 6 if ref_image is not None else 4
+                steps = 8 if ref_image is not None else 4
             else:
                 steps = 30
         if true_cfg_scale is None:

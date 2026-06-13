@@ -148,6 +148,13 @@ def apply_edit(
             seg += ", adapted to the car's angle and perspective" + _size_clause(wheel_size)
         else:
             seg += ", adapted to the car's wheel size, angle and perspective"
+        # The model renders each wheel region independently and they often diverge
+        # (front correct, rear a different design). Force them to match each other.
+        seg += (
+            ". IMPORTANT: fit this SAME wheel to EVERY visible wheel on the car "
+            "(front and rear) — all wheels must be the identical design and match "
+            "each other exactly, just seen from their own angle"
+        )
         parts.append(seg)
     elif wheel_color or wheel_size:
         # Recolour and/or resize the EXISTING wheels — the model loves to invent
@@ -191,7 +198,10 @@ def apply_edit(
     if wheel_color and not cat:
         negative += ", different wheel design, new wheels, changed spoke pattern, redesigned wheels"
     if cat:
-        negative += ", the car's original wheels, unchanged wheels, keeping the existing wheel design"
+        negative += (
+            ", the car's original wheels, unchanged wheels, keeping the existing wheel design"
+            ", mismatched wheels, different front and rear wheels, two different wheel designs"
+        )
 
     PROGRESS["queued"] += 1
     with _gpu_lock:
